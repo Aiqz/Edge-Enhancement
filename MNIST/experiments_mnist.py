@@ -149,10 +149,10 @@ def main():
     for epoch in range(args.start_epoch, args.epochs):
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args.print_freq, device)
+        train(train_loader, model, criterion, optimizer, epoch, args.print_freq, device, log_dir)
 
         # evaluate on validation set
-        prec1, prec5 = validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_1, args.step_size_1)
+        prec1, prec5 = validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_1, args.step_size_1, log_dir)
 
         scheduler.step()
 
@@ -182,7 +182,7 @@ def main():
 
         )
 
-def train(train_loader, model, criterion, optimizer, epoch, print_freq, device):
+def train(train_loader, model, criterion, optimizer, epoch, print_freq, device, log_dir):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     losses = AverageMeter()
@@ -252,17 +252,20 @@ def train(train_loader, model, criterion, optimizer, epoch, print_freq, device):
         end = time.time()
 
         if i % print_freq == 0:
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                  'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\t'.format(
-                epoch, i, len(train_loader), batch_time=batch_time,
-                data_time=data_time, loss=losses, top1=top1, top5=top5))
+            print_content = 'Epoch: [{0}][{1}/{2}]\t' \
+                            'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
+                            'Data {data_time.val:.3f} ({data_time.avg:.3f})\t' \
+                            'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
+                            'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
+                            'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\t'.format(
+                            epoch, i, len(train_loader), batch_time=batch_time,
+                            data_time=data_time, loss=losses, top1=top1, top5=top5)
+            print(print_content)
+            with open(log_dir + 'log.txt', 'a') as f:
+                print(print_content, file=f)
 
 
-def validate(val_loader, model, criterion, print_freq, device, num_steps, step_size):
+def validate(val_loader, model, criterion, print_freq, device, num_steps, step_size, log_dir):
     batch_time = AverageMeter()
     losses_cle = AverageMeter()
     top1_cle = AverageMeter()
@@ -320,24 +323,33 @@ def validate(val_loader, model, criterion, print_freq, device, num_steps, step_s
             end = time.time()
 
             if i % print_freq == 0:
-                print('Test_clean: [{0}/{1}]\t'
-                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                    i, len(val_loader), batch_time=batch_time, loss=losses_cle,
-                    top1=top1_cle, top5=top5_cle))
+                test_clean_content = 'Test_clean: [{0}/{1}]\t' \
+                                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
+                                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
+                                    'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
+                                    'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                                    i, len(val_loader), batch_time=batch_time, loss=losses_cle,
+                                    top1=top1_cle, top5=top5_cle)
+                print(test_clean_content)
+                with open(log_dir + 'log.txt', 'a') as f:
+                    print(test_clean_content, file=f)
+                test_adv_content = 'Test_adv: [{0}/{1}]\t' \
+                                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
+                                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
+                                    'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
+                                    'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                                    i, len(val_loader), batch_time=batch_time, loss=losses_adv,
+                                    top1=top1_adv, top5=top5_adv)
+                print(test_adv_content)
+                with open(log_dir + 'log.txt', 'a') as f:
+                    print(test_adv_content, file=f)
 
-                print('Test_adv: [{0}/{1}]\t'
-                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                    i, len(val_loader), batch_time=batch_time, loss=losses_adv,
-                    top1=top1_adv, top5=top5_adv))
 
     print(' * Clean Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_cle, top5=top5_cle))
     print(' * Adv Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv))
+    with open(log_dir + 'log.txt', 'a') as f:
+        print(' * Clean Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_cle, top5=top5_cle), file=f)
+        print(' * Adv Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv), file=f)
 
     return top1_adv.avg, top5_adv.avg
 
