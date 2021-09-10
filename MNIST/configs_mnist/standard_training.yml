@@ -1,0 +1,46 @@
+# method name
+method_name: 'ST'
+
+# Training
+arch: 'Net2'
+
+start_epoch: 0
+epochs: 100
+
+batch_size: 50
+
+lr: 0.1
+momentum: 0.3
+weight_decay: 0.0001
+
+workers: 1
+pin_memory: true
+
+print_freq: 100
+
+seed: 1
+
+# Attack
+epsilon: 0.3
+
+num_steps_1: 40
+step_size_1: 0.01
+
+num_steps_2: 50
+step_size_2: 0.01
+
+num_steps_3: 100
+step_size_1: 0.01
+
+alpha: 0.3
+sigma: 0
+
+# random initialization for PGD
+random: true
+
+w: 0
+r: 0
+gf: false
+low: 0
+high: 0
+
