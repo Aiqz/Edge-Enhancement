@@ -1,0 +1,58 @@
+# method name
+method_name: 'tarFD'
+
+# Training
+arch: 'resnet18_fd'
+
+start_epoch: 0
+epochs: 90
+
+batch_size: 256
+
+lr: 0.1
+momentum: 0.9
+weight_decay: 0.0001
+
+workers: 8
+pin_memory: true
+
+print_freq: 100
+
+seed: 1
+
+# Attack
+# 16 /255
+epsilon: 0.062745098039216
+
+num_steps_1: 10
+# 2/255
+step_size_1: 0.007843137254902
+
+num_steps_2: 50
+# 1/255
+step_size_2: 0.003921568627451
+
+num_steps_3: 100
+# 1/255
+step_size_1: 0.003921568627451
+
+# random initialization for PGD
+random: true
+
+# weight of adversarial loss
+beta: 1.0
+
+cize: 224
+
+
+alpha: 0
+sigma: 0
+
+w: 0
+r: 0
+gf: false
+low: 0
+high: 0
+
+nGPU: 4
+

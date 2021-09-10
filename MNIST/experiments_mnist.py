@@ -29,7 +29,7 @@ using_gpu = my_gpu.set_by_memory(1)
 print("Using GPU: ", using_gpu)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='PyTorch Tiny-Mnist Training')
+    parser = argparse.ArgumentParser(description='PyTorch Mnist Training')
     parser.add_argument('--data', metavar='DIR', default='/hdd/lirong/Frequency_NN/data',
                         help='path to dataset')
     parser.add_argument('-c', '--config', default='configs.yml', type=str, metavar='Path',
@@ -230,7 +230,7 @@ def train(train_loader, model, criterion, optimizer, epoch, print_freq, device, 
             loss = criterion.loss(model, preds, data_adv, target, optimizer)
         elif args.method_name == 'AVmixup':
             output = model(data_adv)
-            log_prob = F.log_softmax(output, dim=1)
+            log_prob = nn.functional.log_softmax(output, dim=1)
             loss = -torch.sum(log_prob * new_target) / input.shape[0]
         else:
             output = model(data_adv)

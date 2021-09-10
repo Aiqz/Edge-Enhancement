@@ -37,6 +37,83 @@ def PGD(model, args, inputs, targets, num_steps, step_size):
     return x
 
 
+# A targeted_PGD white-box attacker with random target label.
+def targeted_PGD(model, args, inputs, labels, num_steps, step_size, nclass, device):
+
+    x = inputs.detach()
+    # we consider targeted attacks when evaluating under the white-box settings,
+    # where the targeted class is selected uniformly at random
+    label_offset = torch.randint(low=1, high=nclass, size=labels.shape).to(device)
+    # print('label_offset:{}'.format(label_offset))
+    target_labels = torch.fmod(labels + label_offset, nclass)
+
+    if args.random:
+        x = x + torch.zeros_like(x).uniform_(-args.epsilon, args.epsilon)
+        x = torch.clamp(x, 0.0, 1.0)
+
+    for i in range(num_steps):
+        x.requires_grad_()
+        with torch.enable_grad():
+            logits = model(x)
+            loss = F.cross_entropy(logits, target_labels, reduction='sum')
+        grad = torch.autograd.grad(loss, [x])[0]
+        x = x.detach() - step_size * torch.sign(grad.detach())
+        x = torch.min(torch.max(x, inputs - args.epsilon), inputs + args.epsilon)
+        x = torch.clamp(x, 0.0, 1.0)  # data sclale
+
+    return x, target_labels
+
+
+def targeted_PGD_trick(model, args, inputs, labels, num_steps, step_size, nclass, device):
+
+    x = inputs.detach()
+    # we consider targeted attacks when evaluating under the white-box settings,
+    # where the targeted class is selected uniformly at random
+    label_offset = torch.randint(low=1, high=nclass, size=labels.shape).to(device)
+    # print('label_offset:{}'.format(label_offset))
+    target_labels = torch.fmod(labels + label_offset, nclass)
+
+    if args.random:
+        init_start = torch.Tensor(x.shape).uniform_(-args.epsilon, args.epsilon).to(device)
+        start_from_noise_index = torch.gt(torch.rand([]), args.prob_start_from_clean).type(torch.float32).to(device)
+        x = x + start_from_noise_index * init_start
+
+        x = torch.clamp(x, 0.0, 1.0)
+
+    for i in range(num_steps):
+        x.requires_grad_()
+        with torch.enable_grad():
+            logits = model(x)
+            loss = F.cross_entropy(logits, target_labels, reduction='sum')
+        grad = torch.autograd.grad(loss, [x])[0]
+        # x = x.detach() + step_size * torch.sign(grad.detach())  ###wrong
+        x = x.detach() - step_size * torch.sign(grad.detach())
+        x = torch.min(torch.max(x, inputs - args.epsilon), inputs + args.epsilon)
+        x = torch.clamp(x, 0.0, 1.0)  # data sclale
+
+    return x, target_labels
+
+
+class LabelSmoothLoss(torch.nn.Module):
+    def __init__(self, smoothing=0.0):
+        super(LabelSmoothLoss, self).__init__()
+        self.smoothing = smoothing
+
+    def forward(self, input, target):
+        log_prob = F.log_softmax(input, dim=-1)
+        weight = input.new_ones(input.size()) * self.smoothing / (input.size(-1) - 1.)
+        weight.scatter_(-1, target.unsqueeze(-1), (1. - self.smoothing))
+        loss = (-weight * log_prob).sum(dim=-1).mean()
+        return loss
+
+
+# Compute loss for trick model
+def compute_loss_and_error(logits, label, label_smoothing=0.):
+    loss_function = LabelSmoothLoss(label_smoothing)
+    loss = loss_function(logits, label.long())
+    return loss
+
+
 # FGSM
 def FGSM(model, inputs, target, targeted=False, step_size= 0.007):
 
@@ -203,6 +280,91 @@ class ALP:
         return loss
 
 
+# Targeted ALP for Tiny ImageNet
+class targeted_ALP:
+    def __init__(self, step_size=0.003, epsilon=0.047, perturb_steps=5, beta=1.0, n_class = 200):
+        self.step_size = step_size
+        self.epsilon = epsilon
+        self.perturb_steps = perturb_steps
+        self.beta = beta
+        self.n_class = n_class
+
+    def reset_steps(self, k):
+        self.perturb_steps = k
+
+    @weak_script_method
+    def PGD_Linf(self, model, x_natural, y):
+
+        model.eval()
+        x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape, device='cuda').detach()
+
+        for _ in range(self.perturb_steps):
+            x_adv.requires_grad_()
+            with torch.enable_grad():
+                loss_c = F.cross_entropy(model(x_adv), y)
+            grad = torch.autograd.grad(loss_c, [x_adv])[0].detach()
+            x_adv = x_adv.detach() + self.step_size * torch.sign(grad)
+            x_adv = torch.min(torch.max(x_adv, x_natural - self.epsilon), x_natural + self.epsilon)
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
+
+        return x_adv
+
+    @weak_script_method
+    def tarPGD_Linf(self, model, x_natural, y, device):
+
+        model.eval()
+        label_offset = torch.randint(low=1, high=self.n_class, size=y.shape).to(device)
+        target_labels = torch.fmod(y + label_offset, self.n_class)
+
+        x_adv = x_natural.detach() + 0.001 * torch.randn(x_natural.shape, device='cuda').detach()
+
+        for _ in range(self.perturb_steps):
+            x_adv.requires_grad_()
+            with torch.enable_grad():
+                loss_c = F.cross_entropy(model(x_adv), target_labels)
+            grad = torch.autograd.grad(loss_c, [x_adv])[0].detach()
+            x_adv = x_adv.detach() - self.step_size * torch.sign(grad)
+            x_adv = torch.min(torch.max(x_adv, x_natural - self.epsilon), x_natural + self.epsilon)
+            x_adv = torch.clamp(x_adv, 0.0, 1.0)
+
+        return x_adv
+
+    @weak_script_method
+    def loss(self, model, logits, logits_adv, y, optimizer):
+        model.train()
+        optimizer.zero_grad()
+
+        loss_robust = 0.5 * F.cross_entropy(logits, y) + 0.5 * F.cross_entropy(logits_adv, y)
+        loss_alp = F.mse_loss(logits, logits_adv)
+        loss = loss_robust + self.beta * loss_alp
+
+        return loss
+
+
+# Targeted ALP for ImageNet
+def tar_alp_imagenet(model, args, inputs, labels, num_steps, step_size, device):
+
+    x = inputs.detach()
+
+    label_offset = torch.randint(low=1, high=1000, size=labels.shape).to(device)
+    target_labels = torch.fmod(labels + label_offset, 1000)
+
+    x = x + 0.001 * torch.randn(x.shape).to(device).detach()
+
+    for i in range(num_steps):
+        x.requires_grad_()
+        with torch.enable_grad():
+            logits = model(x)
+            loss = F.cross_entropy(logits, target_labels, reduction='sum')
+        grad = torch.autograd.grad(loss, [x])[0]
+        # x = x.detach() + step_size * torch.sign(grad.detach())  ###wrong
+        x = x.detach() - step_size * torch.sign(grad.detach())
+        x = torch.min(torch.max(x, inputs - args.epsilon), inputs + args.epsilon)
+        x = torch.clamp(x, 0.0, 1.0)  # data sclale
+
+    return x, target_labels
+
+
 def squared_l2_norm(x):
     flattened = x.view(x.shape[0], -1)
     return (flattened ** 2).mean(1)
@@ -275,6 +437,7 @@ class Trades:
         return loss
 
 
+# AVmixup
 class AVmixup:
     def __init__(self, args, gamma, lambda1, lambda2, step_size, num_steps, num_classes=200, device='cuda'):
         self.args = args
@@ -322,3 +485,44 @@ class AVmixup:
         x = inputs * x_weight_torch + adversarial_vertex * (1 - x_weight_torch)
         y = y_nat * y_weight + y_vertex * (1 - y_weight)
         return x.to(torch.float), y
+
+    def tar_perturb(self, model, inputs, targets):
+        """
+            Given a set of examples (inputs, targets), returns a set of adversarial
+            examples within epsilon of inputs in l_infinity norm.
+        """
+        x = inputs.detach()
+
+        label_offset = torch.randint(low=1, high=self.num_classes, size=targets.shape).to(self.device)
+        target_labels = torch.fmod(targets + label_offset, self.num_classes)
+
+
+        if self.args.random:
+            x = x + torch.zeros_like(x).uniform_(-self.args.epsilon, self.args.epsilon)
+            x = torch.clamp(x, 0, 1)
+
+        for i in range(self.num_steps):
+            x.requires_grad_()
+            with torch.enable_grad():
+                logits = model(x)
+                log_prob = F.log_softmax(logits, dim=1)
+                loss = -torch.sum(log_prob * target_labels)
+                # loss = F.cross_entropy(logits, targets, reduction='sum')
+            grad = torch.autograd.grad(loss, [x])[0]
+            # x = x.detach() + self.step_size * torch.sign(grad.detach())
+            x = x.detach() - self.step_size * torch.sign(grad.detach())
+            x = torch.min(torch.max(x, inputs - self.args.epsilon), inputs + self.args.epsilon)
+            x = torch.clamp(x, 0, 1)  # data sclale
+        perturb = (x - inputs) * self.gamma
+        adversarial_vertex = inputs + perturb
+        adversarial_vertex = torch.clamp(adversarial_vertex, 0, 1)
+        y_nat = self._label_smoothing(targets, self.lambda1)
+        y_vertex = self._label_smoothing(targets, self.lambda2)
+        x_weight = np.random.beta(1.0, 1.0, [x.shape[0], 1, 1, 1])
+        x_weight_torch = torch.from_numpy(x_weight).to(self.device)
+        y_weight = torch.from_numpy(np.reshape(x_weight, [-1, 1])).to(self.device)
+        x = inputs * x_weight_torch + adversarial_vertex * (1 - x_weight_torch)
+        y = y_nat * y_weight + y_vertex * (1 - y_weight)
+        return x.to(torch.float), y
+
+
