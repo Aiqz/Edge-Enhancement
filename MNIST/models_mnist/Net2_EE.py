@@ -1,7 +1,3 @@
-'''
-   @author:Lirong
-   @time: 2021.05.21
-'''
 import sys
 sys.path.append("../..")
 import torch

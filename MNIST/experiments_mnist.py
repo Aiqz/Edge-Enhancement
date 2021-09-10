@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   experiments_mnist.py
-    @Time    :   2021/09/09 15:51:47
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   Experiments on MNIST, include ST, AT, ALP, TRADES, AVmixup, EE
-'''
 import argparse
 import os
 import sys

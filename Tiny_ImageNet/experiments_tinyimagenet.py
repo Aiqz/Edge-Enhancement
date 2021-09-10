@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   experiments_tinyimagenet.py
-    @Time    :   2021/09/10 09:15:03
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   Experiments on Tiny ImageNet
-'''
 import argparse
 import os
 import sys

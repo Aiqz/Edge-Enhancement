@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   data_loader.py
-    @Time    :   2021/09/09 16:07:15
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   None
-'''
 import os
 import torch
 import torchvision.transforms as transforms

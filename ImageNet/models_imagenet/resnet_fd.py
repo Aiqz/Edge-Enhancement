@@ -1,12 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
-'''
-    @File    :   resnet_fd.py
-    @Time    :   2021/09/10 14:52:46
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   None
-'''
 import os
 import math
 import torch

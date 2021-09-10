@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   experiments_imagenet.py
-    @Time    :   2021/09/10 12:31:21
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   None
-'''
 import argparse
 import os
 import sys
