@@ -28,7 +28,7 @@ print("Using GPU: ", using_gpu)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-    parser.add_argument('--data', metavar='DIR', default='/hdd/public_data/ImageNet/seqres',
+    parser.add_argument('--data', metavar='DIR', default='',
                         help='path to dataset')
     parser.add_argument('-c', '--config', default='configs.yml', type=str, metavar='Path',
                         help='path to the config file (default: configs.yml)')

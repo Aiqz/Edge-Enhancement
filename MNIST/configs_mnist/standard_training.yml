@@ -32,7 +32,7 @@ step_size_2: 0.01
 num_steps_3: 100
 step_size_1: 0.01
 
-alpha: 0.3
+alpha: 0
 sigma: 0
 
 # random initialization for PGD
