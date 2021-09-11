@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   helper.py
-    @Time    :   2021/09/09 16:18:51
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   Some functions to use
-'''
 import shutil
 import torch
 import numpy as np

@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   resnet_EE.py
-    @Time    :   2021/09/10 09:22:04
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   EE model with resnet
-'''
 import os
 import math
 import torch

@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   experiments_imagenet.py
-    @Time    :   2021/09/10 12:31:21
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   None
-'''
 import argparse
 import os
 import sys
@@ -35,7 +28,7 @@ print("Using GPU: ", using_gpu)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-    parser.add_argument('--data', metavar='DIR', default='/hdd/public_data/ImageNet/seqres',
+    parser.add_argument('--data', metavar='DIR', default='',
                         help='path to dataset')
     parser.add_argument('-c', '--config', default='configs.yml', type=str, metavar='Path',
                         help='path to the config file (default: configs.yml)')

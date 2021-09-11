@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   attacks.py
-    @Time    :   2021/09/09 15:59:05
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   Attack methods. include: PGD,   
-'''
 import numpy as np
 import torch
 import torch.nn as nn

@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
-'''
-    @File    :   core.py
-    @Time    :   2021/09/09 16:25:53
-    @Author  :   Qingzhong Ai 
-    @Contact :   aqz1995@163.com
-    @Desc    :   None
-'''
+
 import numpy as np
 import torch
 import torch.nn as nn
