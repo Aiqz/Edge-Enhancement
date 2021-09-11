@@ -39,9 +39,6 @@ step_size_1: 0.003921568627451
 # random initialization for PGD
 random: true
 
-# weight of adversarial loss
-beta: 1.0
-
 cize: 224
 
 
