@@ -18,5 +18,5 @@ python experiments_tinyimagenet.py --data "Tiny ImageNet Data" --config "Path of
 
 ### ImageNet
 ```python
-python experiments_imagenet.py --data "ImageNet Data" --config "Path of a config in configs_imagenet"
+python -m torch.distributed.launch --nproc_per_node=int(the numbers of GPUs) --master_port=12345 experiments_imagenet.py --data "ImageNet Data" --config "Path of a config in configs_imagenet"
 ```
