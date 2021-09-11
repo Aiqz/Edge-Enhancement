@@ -1,7 +1,6 @@
 # Edge-Enhancement
-Edge Enhancement Improves Adversarial Robustness in Image Classification
-****
-Implementions of Edge Enhancement and other advserarial training method, including Standard Training(ST), Advserarial Training(AT), ALP, TRADES and Avmixup
+
+Implementions of "Edge Enhancement Improves Adversarial Robustness in Image Classification" and other advserarial training method, including Standard Training(ST), Advserarial Training(AT), ALP, TRADES and Avmixup
 
 ## Usage
 For MNIST and Tiny ImageNet, we use DataParallel(DP). 
