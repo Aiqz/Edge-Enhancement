@@ -40,7 +40,7 @@ step_size_1: 0.003921568627451
 random: true
 
 # weight of adversarial loss
-beta: 1.0
+beta: 6.0
 
 alpha: 0
 sigma: 0

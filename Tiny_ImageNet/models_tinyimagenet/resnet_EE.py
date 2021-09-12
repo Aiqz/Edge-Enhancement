@@ -10,15 +10,14 @@ import torchvision.models
 __all__ = ['ResNet_EE', 'resnet18_EE', 'resnet34_EE', 'resnet50_EE', 'resnet101_EE', 'resnet152_EE']
 
 # you need to download the models to ~/.torch/models
-# model_urls = {
-#     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
-#     'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
-#     'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
-#     'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
-#     'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
-# }
-# models_dir = os.path.expanduser('~/.torch/models')
-models_dir='/hdd/helirong/Self_AT/ImageNet/ImageNet-master/model_pretrained'
+model_urls = {
+    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+}
+models_dir = os.path.expanduser('~/.torch/models')
 model_name = {
     'resnet18': 'resnet18-5c106cde.pth',
     'resnet34': 'resnet34-333f7ec4.pth',
