@@ -34,7 +34,7 @@ step_size_2: 0.003921568627451
 
 num_steps_3: 100
 # 1/255
-step_size_1: 0.003921568627451
+step_size_3: 0.003921568627451
 
 # random initialization for PGD
 random: true

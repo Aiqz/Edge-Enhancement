@@ -26,6 +26,37 @@ def data_loader_mnist(root, batch_size=64, workers=2, pin_memory=True):
     return train_loader, test_loader
 
 
+# Data loader for CIFAR100
+def data_loader_cifar100(root, batch_size=64, workers=2, pin_memory=True):
+    train_transform = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(15),
+        transforms.ToTensor(),
+    ])
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
+    ])
+    train_dataset = datasets.CIFAR100(root, train=True, transform=train_transform, download=True)
+    test_dataset = datasets.CIFAR100(root, train=False, transform=test_transform, download=True)
+    train_loader = torch.utils.data.DataLoader(
+        dataset=train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=pin_memory,
+        num_workers=workers,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        dataset=test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        pin_memory=pin_memory,
+        num_workers=workers,
+    )
+    return train_loader, test_loader
+
+
+
 # Data loader for Tiny ImageNet
 def data_loader_tiny_imagenet(root, batch_size=256, workers=4, pin_memory=True):
     traindir = os.path.join(root, 'train')

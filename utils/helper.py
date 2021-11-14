@@ -87,6 +87,18 @@ def adjust_learning_rate_1(optimizer, epoch, init_lr, epochs):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
+    # if args.lr_schedule == 'superconverge':
+    #     lr_schedule = lambda t: np.interp([t], [0, args.epochs * 2 // 5, args.epochs], [0, args.lr_max, 0])[0]
+    #     # lr_schedule = lambda t: np.interp([t], [0, args.epochs], [0, args.lr_max])[0]
+    # elif args.lr_schedule == 'piecewise':
+    #     def lr_schedule(t):
+    #         if t / args.epochs < 0.5:
+    #             return args.lr_max
+    #         elif t / args.epochs < 0.75:
+    #             return args.lr_max / 10.
+    #         else:
+    #             return args.lr_max / 100. 
+
 
 def compute_attack_success(logits, target_label):
     """

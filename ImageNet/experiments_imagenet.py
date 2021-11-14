@@ -300,7 +300,7 @@ def validate(val_loader, model, criterion, print_freq, device, num_steps, step_s
     top1_adv = AverageMeter()
     top5_adv = AverageMeter()
 
-    # switch to evaluate mode
+    # switch to evaluate model
     model.eval()
 
     end = time.time()

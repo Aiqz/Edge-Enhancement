@@ -8,7 +8,6 @@ from ._jit_internal import weak_script_method
 import cv2
 from torch.autograd import Variable
 
-
 # Projected Gradient Descent
 def PGD(model, args, inputs, targets, num_steps, step_size):
     x = inputs.detach()

@@ -6,7 +6,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utils.core import HighFreqSuppress, CannyFilter, get_gaussian_kernel
+from utils.u2net import U2NET, U2NETP, Sobel
 import torchvision.models
+from torchvision import transforms, utils
 __all__ = ['ResNet_EE', 'resnet18_EE', 'resnet34_EE', 'resnet50_EE', 'resnet101_EE', 'resnet152_EE']
 
 # you need to download the models to ~/.torch/models
@@ -119,6 +121,9 @@ class ResNet_EE(nn.Module):
         self.low = low / 255
         self.high = high / 255
 
+        self.sobel = Sobel()
+        self.u2netp = U2NETP(3, 1)
+
         k_gaussian = 3
         gaussian_2D = get_gaussian_kernel(k_gaussian, 0., 1.)
         gaussian_2D_torch = torch.from_numpy(gaussian_2D).unsqueeze(0).unsqueeze(0).type(torch.float)
@@ -165,9 +170,12 @@ class ResNet_EE(nn.Module):
     def forward(self, x):
         # Remove high frequency
         x_hfs = self.hfs(x)
+
+
         # Canny
         x_canny = self.canny(x, low_threshold=self.low, high_threshold=self.high, hysteresis=True)
         # x = x_canny.type(torch.float)
+
         if self.with_gf:
             x_canny = F.conv2d(x_canny.type(torch.float), self.weight_gaussian, padding=1)
             x = x_hfs + self.w * x_canny

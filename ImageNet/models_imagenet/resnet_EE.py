@@ -165,7 +165,6 @@ class ResNet_EE(nn.Module):
         # x = x_canny.type(torch.float)
         if self.with_gf:
             x_canny = F.conv2d(x_canny.type(torch.float), self.weight_gaussian, padding=1)
-            # print("a")
             x = x_hfs + self.w * x_canny
         else:
             x = x_hfs + self.w * x_canny
