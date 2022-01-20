@@ -25,7 +25,7 @@ print("Using GPU: ", using_gpu)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Tiny ImageNet Training')
-    parser.add_argument('--data', metavar='DIR', default='',
+    parser.add_argument('--data', metavar='DIR', default='/hdd1/aiqingzhong/tiny-imagenet-200/',
                         help='path to dataset')
     parser.add_argument('-c', '--config', default='configs.yml', type=str, metavar='Path',
                         help='path to the config file (default: configs.yml)')
@@ -93,6 +93,10 @@ def main():
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
                                          sigma=args.sigma)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
+    elif args.arch == 'resnet18_EE_square':
+        model = resnet18_EE_square(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
+                                         with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
+                                         sigma=args.sigma, type_canny=args.type_canny, epsilon=args.epsilon_square, n_queries=args.n_queries)
     else:
         raise NotImplementedError
 

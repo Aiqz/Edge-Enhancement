@@ -2,7 +2,7 @@
 method_name: 'EE_AT_AWP'
 
 # Training
-arch: 'PreActResNet18_EE'
+arch: 'PreActResNet18_EE_BPDA'
 
 start_epoch: 0
 epochs: 200

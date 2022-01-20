@@ -1,2 +1,5 @@
 from .preactresnet import PreActResNet18, PreActResNet34, PreActResNet50, PreActResNet101, PreActResNet152
+from .preactresnet_EE import PreActResNet18_EE, PreActResNet34_EE, PreActResNet50_EE, PreActResNet101_EE, PreActResNet152_EE
+from .preactresnet_EE_BPDA import PreActResNet18_EE_BPDA, PreActResNet34_EE_BPDA, PreActResNet50_EE_BPDA, PreActResNet101_EE_BPDA, PreActResNet152_EE_BPDA
+from .preactresnet_EE_BPDA_3 import PreActResNet18_EE_BPDA_3
 from .utils_awp import AdvWeightPerturb

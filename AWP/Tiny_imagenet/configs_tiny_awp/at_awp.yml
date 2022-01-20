@@ -40,7 +40,7 @@ cutout: false
 chkpt_iters: 10
 
 # awp_gamma: 0.01
-awp_gamma: 0.003
+awp_gamma: 0.005
 awp_warmup: 0
 
 momentum: 0.9

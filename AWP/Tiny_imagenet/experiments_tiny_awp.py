@@ -7,27 +7,32 @@
     @Contact :   aqz1995@163.com
     @Desc    :   None
 '''
-import argparse
 import os
 import sys
 sys.path.append("../..")
-import time
 import numpy as np
+import time
+import argparse
+
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import torch.utils.data
-import torch.backends.cudnn as cudnn
 import torch.nn.functional as F
-from models_tiny_awp import *
-from utils.data_loader import data_loader_tiny_imagenet
-from utils.attacks import PGD
+import torch.backends.cudnn as cudnn
+import torch.utils.data
+import torch.optim as optim
+import torchvision
+
 from utils.helper import AverageMeter, accuracy, save_checkpoint, set_seed, parse_config_file, adjust_learning_rate_1
+from utils.attacks import PGD
+from utils.data_loader import data_loader_tiny_imagenet
+from models_tiny_awp import *
+from autoattack import AutoAttack
 
 from managpu import GpuManager
 my_gpu = GpuManager()
 using_gpu = my_gpu.set_by_memory(1)
 print("Using GPU: ", using_gpu)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Tiny AWP Training')
@@ -47,7 +52,9 @@ def parse_args():
                         help='disables CUDA training')
     return parser.parse_args()
 
+
 best_prec1 = 0.0
+
 
 def main():
     global args, best_prec1
@@ -70,8 +77,21 @@ def main():
     if args.arch == 'PreActResNet18':
         model = PreActResNet18(dataset="Tiny-ImageNet")
         proxy = PreActResNet18(dataset="Tiny-ImageNet")
-    elif args.arch == 'WideResNet':
-        raise NotImplementedError
+    elif args.arch == 'PreActResNet18_EE':
+        model = PreActResNet18_EE(dataset="Tiny-ImageNet", cize=args.cize, r=args.r, w=args.w,
+                                  with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma)
+        proxy = PreActResNet18_EE(dataset="Tiny-ImageNet", cize=args.cize, r=args.r, w=args.w,
+                                  with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma)
+    elif args.arch == 'PreActResNet18_EE_BPDA':
+        model = PreActResNet18_EE_BPDA(dataset="Tiny-ImageNet", cize=args.cize, r=args.r, w=args.w,
+                                  with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma)
+        proxy = PreActResNet18_EE_BPDA(dataset="Tiny-ImageNet", cize=args.cize, r=args.r, w=args.w,
+                                  with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma)
+    elif args.arch == 'PreActResNet18_EE_BPDA_3':
+        model = PreActResNet18_EE_BPDA_3(dataset="Tiny-ImageNet", cize=args.cize, r=args.r, w=args.w,
+                                  with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma)
+        proxy = PreActResNet18_EE_BPDA_3(dataset="Tiny-ImageNet", cize=args.cize, r=args.r, w=args.w,
+                                  with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma)
     else:
         raise NotImplementedError
 
@@ -82,13 +102,13 @@ def main():
     # define loss and optimizer
     if args.l2:
         decay, no_decay = [], []
-        for name,param in model.named_parameters():
+        for name, param in model.named_parameters():
             if 'bn' not in name and 'bias' not in name:
                 decay.append(param)
             else:
                 no_decay.append(param)
-        params = [{'params':decay, 'weight_decay':args.l2},
-                  {'params':no_decay, 'weight_decay': 0 }]
+        params = [{'params': decay, 'weight_decay': args.l2},
+                  {'params': no_decay, 'weight_decay': 0}]
     else:
         params = model.parameters()
 
@@ -96,9 +116,9 @@ def main():
                           momentum=args.momentum,
                           weight_decay=args.weight_decay)
     proxy_optimizer = optim.SGD(proxy.parameters(), lr=0.01)
-    awp_adversary = AdvWeightPerturb(model=model, proxy=proxy, proxy_optim=proxy_optimizer, gamma=args.awp_gamma)
+    awp_adversary = AdvWeightPerturb(
+        model=model, proxy=proxy, proxy_optim=proxy_optimizer, gamma=args.awp_gamma)
 
-    
     criterion = nn.CrossEntropyLoss().to(device)
 
     # optionally resume from a checkpoint
@@ -110,26 +130,16 @@ def main():
             best_prec1 = checkpoint['best_prec1']
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
-            print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
+            print("=> loaded checkpoint '{}' (epoch {})".format(
+                args.resume, checkpoint['epoch']))
     else:
         print("=> no checkpoint found at '{}'".format(args.resume))
 
     # Data loading
-    train_loader, val_loader = data_loader_tiny_imagenet(args.data, args.batch_size, args.workers, args.pin_memory)
+    train_loader, val_loader = data_loader_tiny_imagenet(
+        args.data, args.batch_size, args.workers, args.pin_memory)
 
-    if args.evaluate:
-        # PGD10
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_1, args.step_size_1))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_1, args.step_size_1)
 
-        # PGD50
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_2, args.step_size_2))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_2, args.step_size_2)
-
-        # PGD100
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_3, args.step_size_3))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_3, args.step_size_3)
-        return
 
     # Create output file
     cur_dir = os.getcwd()
@@ -147,14 +157,48 @@ def main():
     if not os.path.exists(best_model_dir):
         os.makedirs(best_model_dir)
 
+    if args.evaluate:
+
+        # PGD10
+        print("=> PGD: num_step:{},step_size:{}".format(10, args.step_size_1))
+        validate(val_loader, model, criterion, args.print_freq, device, 10, args.step_size_1, log_dir)
+
+        # PGD50
+        print("=> PGD: num_step:{},step_size:{}".format(50, args.step_size_1))
+        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_2, args.step_size_1, log_dir)
+
+        # Auto-attack
+        log_dir_aa = log_dir + 'log_aa.txt'
+        validate_aa(args, val_loader, model, log_dir_aa)
+        # PGD10
+        # print("=> evaluate.tar_num_step:{},step_size:{}".format(
+        #     args.num_steps_1, args.step_size_1))
+        # validate(val_loader, model, criterion, args.print_freq,
+        #          device, args.num_steps_1, args.step_size_1)
+
+        # # PGD50
+        # print("=> evaluate.tar_num_step:{},step_size:{}".format(
+        #     args.num_steps_2, args.step_size_1))
+        # validate(val_loader, model, criterion, args.print_freq,
+        #          device, args.num_steps_2, args.step_size_1)
+
+        # # PGD100
+        # print("=> evaluate.tar_num_step:{},step_size:{}".format(
+        #     args.num_steps_3, args.step_size_3))
+        # validate(val_loader, model, criterion, args.print_freq,
+        #          device, args.num_steps_3, args.step_size_3)
+        return
+
     # Training Process
     for epoch in range(args.start_epoch, args.epochs):
-        
+
         # train for one epoch
-        train(train_loader, model, awp_adversary, criterion, optimizer, epoch, args.print_freq, device, log_dir)
+        train(train_loader, model, awp_adversary, criterion,
+              optimizer, epoch, args.print_freq, device, log_dir)
 
         # evaluate on validation set
-        prec1, prec5 = validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_2, args.step_size_1, log_dir)
+        prec1, prec5 = validate(val_loader, model, criterion, args.print_freq,
+                                device, args.num_steps_2, args.step_size_1, log_dir)
 
         # remember the best prec@1 and save checkpoint
         is_best = prec1 > best_prec1
@@ -167,20 +211,22 @@ def main():
             'best_prec1': best_prec1,
             'optimizer': optimizer.state_dict()
         }, is_best,
-            model_dir + 'at_numstep' +  str(args.num_steps_1) + '_epsilon' + str(int(args.epsilon*255)) +
+            model_dir + 'at_numstep' + str(args.num_steps_1) + '_epsilon' + str(int(args.epsilon*255)) +
             '_r' + str(args.r) +
             '_canny_sigma' + str(args.sigma) + '_alpha' + str(args.alpha) +
             '-bs' + str(args.batch_size) + '-lr_' + str(args.lr) +
             '-w' + str(args.w) + '-gf' + str(args.gf) +
-            '-l' + str(args.low)+ '-h' + str(args.high)+ '_' + str(epoch) + '.pth',
+            '-l' + str(args.low) + '-h' + str(args.high) +
+            '_' + str(epoch) + '.pth',
             best_model_dir + 'at_numstep' + str(args.num_steps_1) + '_epsilon' + str(int(args.epsilon*255)) +
             'r' + str(args.r) +
             '_canny_sigma' + str(args.sigma) + '_alpha' + str(args.alpha) +
             '-bs' + str(args.batch_size) + '-lr_' + str(args.lr) +
             '-w' + str(args.w) + '-gf' + str(args.gf) +
-            '-l' + str(args.low)+ '-h' + str(args.high) + '.pth'
+            '-l' + str(args.low) + '-h' + str(args.high) + '.pth'
 
         )
+
 
 def train(train_loader, model, awp_adversary, criterion, optimizer, epoch, print_freq, device, log_dir):
     batch_time = AverageMeter()
@@ -205,10 +251,11 @@ def train(train_loader, model, awp_adversary, criterion, optimizer, epoch, print
         # adjust learning rate
         epoch_index = epoch + (i + 1) / len(train_loader)
         adjust_learning_rate_1(optimizer, epoch_index, args.lr, args.epochs)
-        
+
         # compute output
-        if args.method_name == 'AT_AWP':
-            data_adv = PGD(model, args, input, target, args.num_steps_1, args.step_size_1)
+        if args.method_name == 'AT_AWP' or args.method_name == 'EE_AT_AWP':
+            data_adv = PGD(model, args, input, target,
+                           args.num_steps_1, args.step_size_1)
             # delta = attack_pgd(model, input, target, args.epsilon, args.step_size_1, args.num_steps_1, args.restarts, args.norm)
             # delta = delta.detach()
             # data_adv = normalize(torch.clamp(input + delta[:input.size(0)], min=lower_limit, max=upper_limit))
@@ -216,16 +263,17 @@ def train(train_loader, model, awp_adversary, criterion, optimizer, epoch, print
             if epoch >= args.awp_warmup:
                 # not compatible to mixup currently.
                 # assert (not args.mixup)
-                awp = awp_adversary.calc_awp(inputs_adv=data_adv, targets=target)
+                awp = awp_adversary.calc_awp(
+                    inputs_adv=data_adv, targets=target)
                 awp_adversary.perturb(awp)
             robust_output = model(data_adv)
             # compute loss
             robust_loss = criterion(robust_output, target)
         else:
             raise NotImplementedError('Wrong method name!')
-        
+
         if args.l1:
-            for name,param in model.named_parameters():
+            for name, param in model.named_parameters():
                 if 'bn' not in name and 'bias' not in name:
                     robust_loss += args.l1*param.abs().sum()
 
@@ -233,10 +281,10 @@ def train(train_loader, model, awp_adversary, criterion, optimizer, epoch, print
         optimizer.zero_grad()
         robust_loss.backward()
         optimizer.step()
-        
+
         if epoch >= args.awp_warmup:
-                awp_adversary.restore(awp)
-        
+            awp_adversary.restore(awp)
+
         # output = model(input)
         # loss = criterion(output, target)
 
@@ -257,8 +305,8 @@ def train(train_loader, model, awp_adversary, criterion, optimizer, epoch, print
                             'Robust Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
                             'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
                             'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\t'.format(
-                            epoch, i, len(train_loader), batch_time=batch_time,
-                            data_time=data_time, loss=losses, top1=top1, top5=top5)
+                                epoch, i, len(train_loader), batch_time=batch_time,
+                                data_time=data_time, loss=losses, top1=top1, top5=top5)
             print(print_content)
             with open(log_dir + 'log.txt', 'a') as f:
                 print(print_content, file=f)
@@ -290,6 +338,7 @@ def validate(val_loader, model, criterion, print_freq, device, num_steps, step_s
             # delta = attack_pgd(model, input, target, args.epsilon, step_size, num_steps, args.restarts, args.norm)
             # delta = delta.detach()
             # data_adv = normalize(torch.clamp(input + delta[:input.size(0)], min=lower_limit, max=upper_limit))
+
         else:
             raise NotImplementedError
 
@@ -303,12 +352,14 @@ def validate(val_loader, model, criterion, print_freq, device, num_steps, step_s
             loss_adv = criterion(output_adv, target)
 
             # measure accuracy and record loss
-            prec1_cle, prec5_cle = accuracy(output_clean.data, target, topk=(1, 5))
+            prec1_cle, prec5_cle = accuracy(
+                output_clean.data, target, topk=(1, 5))
             losses_cle.update(loss_clean.item(), input.size(0))
             top1_cle.update(prec1_cle[0], input.size(0))
             top5_cle.update(prec5_cle[0], input.size(0))
 
-            prec1_adv, prec5_adv = accuracy(output_adv.data, target, topk=(1, 5))
+            prec1_adv, prec5_adv = accuracy(
+                output_adv.data, target, topk=(1, 5))
             losses_adv.update(loss_adv.item(), input.size(0))
             top1_adv.update(prec1_adv[0], input.size(0))
             top5_adv.update(prec5_adv[0], input.size(0))
@@ -319,34 +370,62 @@ def validate(val_loader, model, criterion, print_freq, device, num_steps, step_s
 
             if i % print_freq == 0:
                 test_clean_content = 'Test_clean: [{0}/{1}]\t' \
-                                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
-                                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
-                                    'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
-                                    'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                                    i, len(val_loader), batch_time=batch_time, loss=losses_cle,
-                                    top1=top1_cle, top5=top5_cle)
+                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
+                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
+                    'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
+                    'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                        i, len(val_loader), batch_time=batch_time, loss=losses_cle,
+                        top1=top1_cle, top5=top5_cle)
                 print(test_clean_content)
-                with open(log_dir + 'log.txt', 'a') as f:
+                with open(log_dir + 'log_pgd.txt', 'a') as f:
                     print(test_clean_content, file=f)
                 test_adv_content = 'Test_adv: [{0}/{1}]\t' \
-                                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
-                                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
-                                    'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
-                                    'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                                    i, len(val_loader), batch_time=batch_time, loss=losses_adv,
-                                    top1=top1_adv, top5=top5_adv)
+                    'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t' \
+                    'Loss {loss.val:.4f} ({loss.avg:.4f})\t' \
+                    'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t' \
+                    'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                        i, len(val_loader), batch_time=batch_time, loss=losses_adv,
+                        top1=top1_adv, top5=top5_adv)
                 print(test_adv_content)
-                with open(log_dir + 'log.txt', 'a') as f:
+                with open(log_dir + 'log_pgd.txt', 'a') as f:
                     print(test_adv_content, file=f)
 
-
-    print(' * Clean Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_cle, top5=top5_cle))
-    print(' * Adv Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv))
-    with open(log_dir + 'log.txt', 'a') as f:
-        print(' * Clean Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_cle, top5=top5_cle), file=f)
-        print(' * Adv Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv), file=f)
+    print(
+        ' * Clean Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_cle, top5=top5_cle))
+    print(
+        ' * Adv Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv))
+    with open(log_dir + 'log_pgd.txt', 'a') as f:
+        print(' * Clean Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(
+            top1=top1_cle, top5=top5_cle), file=f)
+        print(' * Adv Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(
+            top1=top1_adv, top5=top5_adv), file=f)
 
     return top1_adv.avg, top5_adv.avg
+
+
+def validate_aa(args, val_loader, model, log_path):
+    model.eval()
+    adversary = AutoAttack(model, norm='Linf', eps=args.epsilon, log_path=log_path, version='standard')
+
+    # specify a attack square
+    # adversary.attacks_to_run = ['square']
+
+    l = [x for (x, y) in val_loader]
+    x_test = torch.cat(l, 0)
+    l = [y for (x, y) in val_loader]
+    y_test = torch.cat(l, 0)
+
+    with torch.no_grad():
+        adv_complete = adversary.run_standard_evaluation(x_test, y_test, bs=args.batch_size)
+        dict_adv = adversary.run_standard_evaluation_individual(x_test, y_test, bs=args.batch_size)
+        # for key in dict_adv.keys():
+        #     a = torch.tensor(dict_adv[key])
+        #     b = a[:64]
+        #     torchvision.utils.save_image(b[:,:,:,:], log_path + 'test.jpg')
+        # print(len(dict_adv))
+        # # print(dict_adv.keys())
+        # print(a.shape)
+
 
 
 if __name__ == '__main__':
