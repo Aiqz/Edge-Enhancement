@@ -96,7 +96,7 @@ def main():
     elif args.arch == 'resnet18_EE_square':
         model = resnet18_EE_square(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
-                                         sigma=args.sigma, type_canny=args.type_canny, epsilon=args.epsilon_square, n_queries=args.n_queries)
+                                         sigma=args.sigma, type_canny=args.type_canny, epsilon=args.epsilon, n_queries=args.n_queries)
     else:
         raise NotImplementedError
 

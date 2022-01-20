@@ -53,4 +53,3 @@ high: 76.0
 #square
 n_queries: 1
 type_canny: 'CannyFilter_step125_1'
-epsilon_square: 0.05
