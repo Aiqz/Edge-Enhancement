@@ -90,6 +90,10 @@ if __name__ == '__main__':
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
                                          sigma=args.sigma)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
+    elif args.arch == 'resnet18_EE_square':
+        model = resnet18_EE_square(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
+                                         with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
+                                         sigma=args.sigma, type_canny=args.type_canny, epsilon=args.epsilon, n_queries=args.n_queries)
     else:
         raise NotImplementedError
     model = model.to(device)

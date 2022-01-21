@@ -17,6 +17,7 @@ from utils.data_loader import data_loader_tiny_imagenet
 from utils.attacks import PGD, FGSM, CWLinfAttack, ALP, Trades, AVmixup
 from utils.attacks import targeted_PGD, targeted_ALP
 from utils.helper import AverageMeter, accuracy, save_checkpoint, set_seed, parse_config_file, adjust_learning_rate_1
+from autoattack import AutoAttack
 
 from managpu import GpuManager
 my_gpu = GpuManager()
@@ -138,20 +139,6 @@ def main():
     # Data loading
     train_loader, val_loader = data_loader_tiny_imagenet(args.data, args.batch_size, args.workers, args.pin_memory)
 
-    if args.evaluate:
-        # PGD10
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_1, args.step_size_1))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_1, args.step_size_1)
-
-        # PGD50
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_2, args.step_size_2))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_2, args.step_size_2)
-
-        # PGD100
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_3, args.step_size_3))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_3, args.step_size_3)
-        return
-
     # Create output file
     cur_dir = os.getcwd()
     dir = cur_dir + '/checkpoint_Tiny_ImageNet/' + str(args.method_name) + '/' + str(args.arch) + '-bs' + str(
@@ -167,6 +154,24 @@ def main():
         os.makedirs(model_dir)
     if not os.path.exists(best_model_dir):
         os.makedirs(best_model_dir)
+
+    if args.evaluate:
+        # PGD10
+        # print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_1, args.step_size_1))
+        # validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_1, args.step_size_1, log_dir)
+
+        # # PGD50
+        # print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_2, args.step_size_2))
+        # validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_2, args.step_size_2, log_dir)
+
+        # # PGD100
+        # print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_3, args.step_size_3))
+        # validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_3, args.step_size_3, log_dir)
+        
+        # Auto-attack
+        log_dir_aa = log_dir + 'log_aa.txt'
+        validate_aa(args, val_loader, model, log_dir_aa)
+        return
 
     # Training Process
     for epoch in range(args.start_epoch, args.epochs):
@@ -406,6 +411,30 @@ def validate(val_loader, model, criterion, print_freq, device, num_steps, step_s
         print(' * Adv Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv), file=f)
 
     return top1_adv.avg, top5_adv.avg
+
+
+def validate_aa(args, val_loader, model, log_path):
+    model.eval()
+    adversary = AutoAttack(model, norm='Linf', eps=args.epsilon, log_path=log_path, version='standard')
+
+    # specify a attack square
+    # adversary.attacks_to_run = ['square']
+
+    l = [x for (x, y) in val_loader]
+    x_test = torch.cat(l, 0)
+    l = [y for (x, y) in val_loader]
+    y_test = torch.cat(l, 0)
+
+    with torch.no_grad():
+        adv_complete = adversary.run_standard_evaluation(x_test, y_test, bs=args.batch_size)
+        dict_adv = adversary.run_standard_evaluation_individual(x_test, y_test, bs=args.batch_size)
+        # for key in dict_adv.keys():
+        #     a = torch.tensor(dict_adv[key])
+        #     b = a[:64]
+        #     torchvision.utils.save_image(b[:,:,:,:], log_path + 'test.jpg')
+        # print(len(dict_adv))
+        # # print(dict_adv.keys())
+        # print(a.shape)
 
 
 if __name__ == '__main__':
