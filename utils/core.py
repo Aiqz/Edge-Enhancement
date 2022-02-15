@@ -549,6 +549,7 @@ class CannyFilter_step125_1(nn.Module):
     def forward(self, img, low_threshold=None, high_threshold=None, hysteresis=False):
         # set the setps tensors
         B, C, H, W = img.shape
+
         blurred = torch.zeros((B, C, H, W)).to(self.device)
         grad_x = torch.zeros((B, 1, H, W)).to(self.device)
         grad_y = torch.zeros((B, 1, H, W)).to(self.device)
@@ -568,6 +569,11 @@ class CannyFilter_step125_1(nn.Module):
         # thick edges
         grad_x_1, grad_y_1 = grad_x / C, grad_y / C
         grad_magnitude = (grad_x_1 ** 2 + grad_y_1 ** 2) ** 0.5
+
+        # gradient mask new added
+        zeros_like = torch.zeros_like(grad_magnitude)
+        grad_magnitude = torch.where(grad_magnitude < self.alpha, zeros_like, grad_magnitude)
+        
         thin_edges = grad_magnitude.clone()
         if high_threshold is not None:
             # high = input > high_threshold

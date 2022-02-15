@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+
 sys.path.append("..")
 import time
 import numpy as np
@@ -15,7 +16,7 @@ from models_mnist import *
 from utils.data_loader import data_loader_mnist
 from utils.attacks import PGD, FGSM, CWLinfAttack, ALP, Trades, AVmixup
 from utils.helper import AverageMeter, accuracy, save_checkpoint, set_seed, parse_config_file
-
+from autoattack import AutoAttack
 from managpu import GpuManager
 my_gpu = GpuManager()
 using_gpu = my_gpu.set_by_memory(1)
@@ -23,7 +24,7 @@ print("Using GPU: ", using_gpu)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Mnist Training')
-    parser.add_argument('--data', metavar='DIR', default='',
+    parser.add_argument('--data', metavar='DIR', default='/hdd/lirong/Frequency_NN/data',
                         help='path to dataset')
     parser.add_argument('-c', '--config', default='configs.yml', type=str, metavar='Path',
                         help='path to the config file (default: configs.yml)')
@@ -61,6 +62,10 @@ def main():
     elif args.arch == 'Net2_EE':
         model = Net2_EE(r=args.r, w=args.w,
                                      with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma)
+        print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
+    elif args.arch == 'Net2_EE_square':
+        model = Net2_EE_square(r=args.r, w=args.w,
+                                     with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha, sigma=args.sigma, type_canny=args.type_canny, epsilon=args.epsilon, n_queries=args.n_queries)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
 
     else:
@@ -107,24 +112,10 @@ def main():
 
     # Data loading
     train_loader, val_loader = data_loader_mnist(args.data, args.batch_size, args.workers, args.pin_memory)
-
-    if args.evaluate:
-        # PGD40
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_1, args.step_size_1))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_1, args.step_size_1)
-
-        # PGD50
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_2, args.step_size_2))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_2, args.step_size_2)
-
-        # PGD100
-        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_3, args.step_size_3))
-        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_3, args.step_size_3)
-        return
-
+    
     # Create output file
     cur_dir = os.getcwd()
-    dir = cur_dir + '/checkpoint_MNIST/' + str(args.method_name) + '/' + str(args.arch) + '-bs' + str(
+    dir = cur_dir + '/checkpoint_MNIST/' + str(args.method_name) + '/' + str(args.arch) + '/' + str(args.type_canny)+ '-bs' + str(
         args.batch_size) + '-lr' + str(args.lr) + '-momentum' + str(args.momentum) + '-wd' + str(
         args.weight_decay) + '-seed' + str(args.seed) + '/'
     print("Output dir:" + dir)
@@ -137,6 +128,26 @@ def main():
             os.makedirs(model_dir)
     if not os.path.exists(best_model_dir):
             os.makedirs(best_model_dir)
+
+    if args.evaluate:
+        # PGD40
+        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_1, args.step_size_1))
+        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_1, args.step_size_1, log_dir)
+
+        # PGD50
+        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_2, args.step_size_2))
+        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_2, args.step_size_2, log_dir)
+
+        # PGD100
+        print("=> evaluate.tar_num_step:{},step_size:{}".format(args.num_steps_3, args.step_size_3))
+        validate(val_loader, model, criterion, args.print_freq, device, args.num_steps_3, args.step_size_3, log_dir)
+        
+        # Auto-attack
+        log_dir_aa = log_dir + 'log_aa.txt'
+        validate_aa(args, val_loader, model, log_dir_aa)
+        return
+        
+
 
     # Training Process
     for epoch in range(args.start_epoch, args.epochs):
@@ -195,7 +206,6 @@ def train(train_loader, model, criterion, optimizer, epoch, print_freq, device, 
 
         target = target.to(device)
         input = input.to(device)
-
         # measure data loading time
         data_time.update(time.time() - end)
         

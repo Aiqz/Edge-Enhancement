@@ -27,7 +27,9 @@ print("Using GPU: ", using_gpu)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='PyTorch Tiny ImageNet Training')
-    parser.add_argument('--data', metavar='DIR', default='/hdd1/aiqingzhong/tiny-imagenet-200/',
+    # parser.add_argument('--data', metavar='DIR', default='/hdd1/aiqingzhong/tiny-imagenet-200/',
+    #                     help='path to dataset')
+    parser.add_argument('--data', metavar='DIR', default='/hdd/lirong/Frequency_NN/tiny-imagenet-200',
                         help='path to dataset')
     parser.add_argument('-c', '--config', default='configs.yml', type=str, metavar='Path',
                         help='path to the config file (default: configs.yml)')
@@ -270,6 +272,9 @@ def train(train_loader, model, criterion, optimizer, epoch, print_freq, device, 
             data_adv, targeted_labels = targeted_PGD(model, args, input, target, args.num_steps_1, args.step_size_1, 200,  device)
             output = model(data_adv)
         elif args.method_name == 'tarEE':
+            data_adv, targeted_labels = targeted_PGD(model, args, input, target, args.num_steps_1, args.step_size_1, 200, device)
+            output = model(data_adv)
+        elif args.method_name == 'tarEE_BPDA3_AT_square':
             data_adv, targeted_labels = targeted_PGD(model, args, input, target, args.num_steps_1, args.step_size_1, 200, device)
             output = model(data_adv)
         else:
