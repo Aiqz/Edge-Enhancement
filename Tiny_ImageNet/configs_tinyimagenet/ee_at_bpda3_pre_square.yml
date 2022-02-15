@@ -1,5 +1,5 @@
 # method name
-method_name: 'tarEE'
+method_name: 'EE_BPDA3_AT_pre_square'
 
 # Training
 arch: 'resnet18_EE'
@@ -34,7 +34,7 @@ step_size_2: 0.003921568627451
 
 num_steps_3: 100
 # 1/255
-step_size_1: 0.003921568627451
+step_size_3: 0.003921568627451
 
 # random initialization for PGD
 random: true
@@ -50,4 +50,6 @@ gf: false
 low: 38.0
 high: 76.0
 
-type_canny: 'CannyFilter'
+#square
+n_queries: 1
+type_canny: 'CannyFilter_step125_1'

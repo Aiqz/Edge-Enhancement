@@ -49,3 +49,5 @@ r: 8
 gf: false
 low: 38.0
 high: 76.0
+
+type_canny: 'CannyFilter'

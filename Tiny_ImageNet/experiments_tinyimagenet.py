@@ -17,6 +17,7 @@ from utils.data_loader import data_loader_tiny_imagenet
 from utils.attacks import PGD, FGSM, CWLinfAttack, ALP, Trades, AVmixup
 from utils.attacks import targeted_PGD, targeted_ALP
 from utils.helper import AverageMeter, accuracy, save_checkpoint, set_seed, parse_config_file, adjust_learning_rate_1
+from utils.core import Add_Square
 from autoattack import AutoAttack
 
 from managpu import GpuManager
@@ -72,27 +73,27 @@ def main():
     elif args.arch == 'resnet18_EE':
         model = resnet18_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
-                                         sigma=args.sigma)
+                                         sigma=args.sigma, type_canny=args.type_canny)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
     elif args.arch == 'resnet34_EE':
         model = resnet34_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
-                                         sigma=args.sigma)
+                                         sigma=args.sigma, type_canny=args.type_canny)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
     elif args.arch == 'resnet50_EE':
         model = resnet50_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
-                                         sigma=args.sigma)
+                                         sigma=args.sigma, type_canny=args.type_canny)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
     elif args.arch == 'resnet101_EE':
         model = resnet101_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
-                                         sigma=args.sigma)
+                                         sigma=args.sigma, type_canny=args.type_canny)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
     elif args.arch == 'resnet152_EE':
         model = resnet152_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
-                                         sigma=args.sigma)
+                                         sigma=args.sigma, type_canny=args.type_canny)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low,args.high))
     elif args.arch == 'resnet18_EE_square':
         model = resnet18_EE_square(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
@@ -141,7 +142,7 @@ def main():
 
     # Create output file
     cur_dir = os.getcwd()
-    dir = cur_dir + '/checkpoint_Tiny_ImageNet/' + str(args.method_name) + '/' + str(args.arch) + '-bs' + str(
+    dir = cur_dir + '/checkpoint_Tiny_ImageNet/' + str(args.method_name) + '/' + str(args.arch) + '/' + str(args.type_canny) + '-bs' + str(
         args.batch_size) + '-lr' + str(args.lr) + '-momentum' + str(args.momentum) + '-wd' + str(
         args.weight_decay) + '-seed' + str(args.seed) + '/'
     print("Output dir:" + dir)
@@ -224,6 +225,9 @@ def train(train_loader, model, criterion, optimizer, epoch, print_freq, device, 
     if args.method_name == 'AVmixup' or args.method_name == 'tarAVmixup':
         avmixup = AVmixup(args, gamma=2.0, lambda1=1.0, lambda2=0.1, step_size=args.step_size_1,
                       num_steps=args.num_steps_1, num_classes=200, device=device)
+    
+    if "pre_square" in args.method_name:
+        add_square = Add_Square(size=args.cize, epsilon=args.epsilon, n_queries=args.n_queries)
 
     for i, (input, target) in enumerate(train_loader):
 
@@ -232,6 +236,9 @@ def train(train_loader, model, criterion, optimizer, epoch, print_freq, device, 
 
         # measure data loading time
         data_time.update(time.time() - end)
+        
+        if "pre_square" in args.method_name:
+            input = add_square(input)
         
         # compute output
         if args.method_name == 'ST':
@@ -325,12 +332,19 @@ def validate(val_loader, model, criterion, print_freq, device, num_steps, step_s
     model.eval()
 
     end = time.time()
+
+    if "pre_square" in args.method_name:
+        add_square = Add_Square(size=args.cize, epsilon=args.epsilon, n_queries=args.n_queries)
+
     for i, (input, target) in enumerate(val_loader):
         # target = target.cuda(async=True)
         # input = input.cuda(async=True)
 
         target = target.to(device)
         input = input.to(device)
+
+        if "pre_square" in args.method_name:
+            input = add_square(input)
 
         if args.attack_method == 'PGD':
             if "tar" in args.method_name:

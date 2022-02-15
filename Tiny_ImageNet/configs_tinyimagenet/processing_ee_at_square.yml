@@ -1,8 +1,8 @@
 # method name
-method_name: 'tarEE'
+method_name: 'Processing_EE_AT_square'
 
 # Training
-arch: 'resnet18_EE'
+arch: 'resnet18_EE_square'
 
 start_epoch: 0
 epochs: 50
@@ -34,7 +34,7 @@ step_size_2: 0.003921568627451
 
 num_steps_3: 100
 # 1/255
-step_size_1: 0.003921568627451
+step_size_3: 0.003921568627451
 
 # random initialization for PGD
 random: true
@@ -50,4 +50,7 @@ gf: false
 low: 38.0
 high: 76.0
 
+#square
+n_queries: 1
 type_canny: 'CannyFilter'
+

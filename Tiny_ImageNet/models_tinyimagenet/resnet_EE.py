@@ -5,7 +5,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.core import HighFreqSuppress, CannyFilter, get_gaussian_kernel
+from utils.core import HighFreqSuppress, CannyFilter, get_gaussian_kernel, CannyFilter_step125_1
 from utils.u2net import U2NET, U2NETP, Sobel
 import torchvision.models
 from torchvision import transforms, utils
@@ -106,7 +106,7 @@ class Bottleneck(nn.Module):
 
 class ResNet_EE(nn.Module):
 
-    def __init__(self, block, layers, num_classes=200, cize= 224, r=16, w=0.5, with_gf=False, low=60.0, high=120.0, alpha = 0.0, sigma=1):
+    def __init__(self, block, layers, num_classes=200, cize= 224, r=16, w=0.5, with_gf=False, low=60.0, high=120.0, alpha = 0.0, sigma=1, type_canny='CannyFilter'):
         super(ResNet_EE, self).__init__()
         self.inplanes = 64
         self.w = w
@@ -116,7 +116,13 @@ class ResNet_EE(nn.Module):
         # print('w=:' + str(w))
         # print('Gaussian Filter:' + str(with_gf))
         self.hfs = HighFreqSuppress(cize, cize, r)
-        self.canny = CannyFilter(sigma= sigma, use_cuda=True, alpha=alpha)
+        # self.canny = CannyFilter(sigma= sigma, use_cuda=True, alpha=alpha)
+        if type_canny == 'CannyFilter':
+            self.canny = CannyFilter(sigma=sigma, use_cuda=True, alpha=alpha)
+        elif type_canny == 'CannyFilter_step125_1':
+            self.canny = CannyFilter_step125_1(sigma=sigma, use_cuda=True, alpha=alpha)
+        else:
+            raise NotImplementedError
 
         self.low = low / 255
         self.high = high / 255
