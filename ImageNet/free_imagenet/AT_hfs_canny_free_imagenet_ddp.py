@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 sys.path.append("..")
+sys.path.append("../..")
 import time
 import math
 import numpy as np
@@ -13,7 +14,7 @@ import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 from models_imagenet import *
 from utils.data_loader import data_loader_imagenet_dataset
-from utils.core import PGD
+from utils.attacks import PGD
 from utils.helper import AverageMeter, accuracy, adjust_learning_rate_free, save_checkpoint, set_seed
 
 import torch.distributed as dist
@@ -31,14 +32,14 @@ model_names = [
     'vgg19', 'vgg19_bn', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
     'resnet152', 'resnet18_hfs', 'resnet34_hfs', 'resnet50_hfs', 'resnet101_hfs',
     'resnet152_hfs','resnet18_hfs_canny', 'resnet34_hfs_canny', 'resnet50_hfs_canny', 'resnet101_hfs_canny',
-    'resnet34_hfs_canny'
+    'resnet34_hfs_canny', 'resnet50_EE_square'
 ]
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--data', metavar='DIR', default='/home/ubuntu/datasets/seqres',
+parser.add_argument('--data', metavar='DIR', default='/hdd/dataset/imagenet2012',
                     help='path to dataset')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet152_hfs_canny', choices=model_names,
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50_EE_square', choices=model_names,
                     help='model architecture: ' + ' | '.join(model_names) + ' (default: alexnet)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
@@ -107,6 +108,11 @@ parser.add_argument('--high', default= 76 , type=float, help='high_threshold of 
 parser.add_argument('--local_rank', default=-1, type=int, help='node rank for distributed training')
 parser.add_argument('--nGPU', default=4, type=int, help='number of GPUs')
 
+parser.add_argument('--type_canny', default='CannyFilter_step125_1', type=str,
+                    help='type of canny, (default: None)')
+parser.add_argument('--n_queries', default='1', type=int,
+                    help='num of square, (default: None)')
+
 best_prec1 = 0.0
 args = parser.parse_args()
 
@@ -153,6 +159,11 @@ def main():
         model = resnet18_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
                                          sigma=args.sigma)
+    elif args.arch == 'resnet50_EE_square':
+        model = resnet18_EE_square(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
+                                         with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
+                                         sigma=args.sigma, type_canny=args.type_canny, epsilon=args.epsilon, n_queries=args.n_queries)
+    
     else:
         raise NotImplementedError
 
@@ -180,7 +191,7 @@ def main():
 
     # dir setting
     cur_dir = os.getcwd()
-    dir = cur_dir + '/checkpoint_free_imagenet/free_AT_ddp/' + str(args.arch)  + '_clip-eps' +  str(int(args.clip_eps*255)) + '/'
+    dir = cur_dir + '/checkpoint_free_imagenet/free_AT_ddp/' + str(args.arch)  + '/' + str(args.type_canny) + '_clip-eps' +  str(int(args.clip_eps*255)) + '/'
     print(dir)
     model_dir = dir + 'model_pth/'
     best_model_dir = dir + 'best_model_pth/'
@@ -194,6 +205,10 @@ def main():
     if not os.path.exists(best_model_dir):
         if args.local_rank == 0:
             os.makedirs(best_model_dir)
+
+    if args.local_rank == 0:
+        with open(log_dir + 'log.txt', 'a') as f:
+            print(args, file=f)
 
 
     # optionally resume from a checkpoint
@@ -383,21 +398,25 @@ def validate(val_loader, model, criterion, print_freq, device, log_dir):
             end = time.time()
 
             if i % print_freq == 0 and args.local_rank == 0:
-                print('Test_clean: [{0}/{1}]\t'
-                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                    i, len(val_loader), batch_time=batch_time, loss=losses_cle,
-                    top1=top1_cle, top5=top5_cle))
-
-                print('Test_adv: [{0}/{1}]\t'
-                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                      'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                    i, len(val_loader), batch_time=batch_time, loss=losses_adv,
-                    top1=top1_adv, top5=top5_adv))
+                test_clean_content = 'Test_clean: [{0}/{1}]\t'\
+                                     'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
+                                     'Loss {loss.val:.4f} ({loss.avg:.4f})\t'\
+                                     'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'\
+                                     'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                                         i, len(val_loader), batch_time=batch_time, loss=losses_cle, top1=top1_cle, top5=top5_cle)
+                print(test_clean_content)
+                with open(log_dir + 'log.txt', 'a') as f:
+                    print(test_clean_content, file=f)
+                test_adv_content = 'Test_adv: [{0}/{1}]\t'\
+                                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'\
+                                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'\
+                                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'\
+                                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
+                                       i, len(val_loader), batch_time=batch_time, loss=losses_adv, top1=top1_adv, top5=top5_adv)
+                print(test_adv_content)
+                with open(log_dir + 'log.txt', 'a') as f:
+                    print(test_adv_content, file=f)
+                
     top1_cle_gather = [torch.ones_like(top1_cle.avg) for _ in range(torch.distributed.get_world_size())]
     top5_cle_gather = [torch.ones_like(top5_cle.avg) for _ in range(torch.distributed.get_world_size())]
     top1_adv_gather = [torch.ones_like(top1_adv.avg) for _ in range(torch.distributed.get_world_size())]
@@ -415,6 +434,14 @@ def validate(val_loader, model, criterion, print_freq, device, log_dir):
         print(' * Adv Prec@1 {0:.3f} Prec@5 {1:.3f}'.format(top1_adv_mean, top5_adv_mean))
         print(' * Cl Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_cle, top5=top5_cle))
         print(' * Ad Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv))
+        
+        with open(log_dir + 'log.txt', 'a') as f:
+            print(' * Clean Prec@1 {0:.3f} Prec@5 {1:.3f}'.format(top1_cle_mean, top5_cle_mean), file=f)
+            print(' * Adv Prec@1 {0:.3f} Prec@5 {1:.3f}'.format(top1_adv_mean, top5_adv_mean), file=f)
+            print(' * Cl Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_cle, top5=top5_cle), file=f)
+            print(' * Ad Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'.format(top1=top1_adv, top5=top5_adv), file=f)
+
+
 
     return top1_adv.avg, top5_adv.avg
 

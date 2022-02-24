@@ -80,7 +80,7 @@ def main():
     elif args.arch == 'resnet18_EE':
         model = resnet18_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
-                                         sigma=args.sigma)
+                                         sigma=args.sigma, type_canny=args.type_canny)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low, args.high))
     elif args.arch == 'resnet34_EE':
         model = resnet34_EE(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
@@ -162,7 +162,7 @@ def main():
     
     # Create output file
     cur_dir = os.getcwd()
-    dir = cur_dir + '/checkpoint_ImageNet/' + str(args.method_name) + '/' + str(args.arch) + '-bs' + str(
+    dir = cur_dir + '/checkpoint_ImageNet/' + str(args.method_name) + '/' + str(args.arch) + '/' + str(args.type_canny) + '-bs' + str(
         args.batch_size) + '-lr' + str(args.lr) + '-momentum' + str(args.momentum) + '-wd' + str(
         args.weight_decay) + '-seed' + str(args.seed) + '/'
     print("Output dir:" + dir)
@@ -176,6 +176,8 @@ def main():
             os.makedirs(model_dir)
         if not os.path.exists(best_model_dir):
             os.makedirs(best_model_dir)
+        with open(log_dir + 'log.txt', 'a') as f:
+            print(args, file=f)
     # 进程同步
     torch.distributed.barrier()
 

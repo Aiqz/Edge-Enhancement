@@ -53,3 +53,5 @@ high: 76.0
 
 nGPU: 4
 
+type_canny: 'CannyFilter_step125_1'
+
