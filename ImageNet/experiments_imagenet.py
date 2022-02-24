@@ -102,6 +102,11 @@ def main():
                                          with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
                                          sigma=args.sigma)
         print('r:{},w:{},gf:{},low:{},high:{}'.format(args.r, args.w, args.gf, args.low, args.high))
+    elif args.arch == 'resnet18_EE_square':
+        model = resnet18_EE_square(pretrained=args.pretrained, cize=args.cize, r=args.r, w=args.w,
+                                         with_gf=args.gf, low=args.low, high=args.high, alpha=args.alpha,
+                                         sigma=args.sigma, type_canny=args.type_canny, epsilon=args.epsilon, n_queries=args.n_queries)
+    
     elif args.arch == 'resnet18_fd':
         model = resnet18_fd(pretrained=args.pretrained)
     elif args.arch == 'resnet34_fd':
@@ -237,7 +242,7 @@ def train(train_loader, model, criterion, optimizer, epoch, print_freq, device, 
         if args.method_name == 'ST':
             data_adv = input
             output = model(data_adv)
-        elif args.method_name == 'tarAT' or args.method_name == 'tarFD' or args.method_name == 'tarEE':
+        elif args.method_name == 'tarAT' or args.method_name == 'tarFD' or args.method_name == 'tarEE' or args.method_name == 'tarEE_BPDA3_AT_square':
             data_adv, targeted_labels = targeted_PGD(model, args, input, target, args.num_steps_1, args.step_size_1, 1000, device)
             output = model(data_adv)
         elif args.method_name == 'tarFD_trick' or args.method_name == 'tarEE_trick':
